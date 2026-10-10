@@ -1,6 +1,9 @@
-# SARA: Savior Glass
+# SARA (Smart Assistive Reading Aid)
 
-A Bangla-first assistive smart glass for blind and low-vision people in Bangladesh, built on a Raspberry Pi 5.
+**An Offline Smart Glass for Visually Impaired People that Reads Bangla and English Text, Detects Objects, and
+Recognises and Checks Bangladeshi Taka Notes**
+
+An assistive smart glass for blind and low-vision people in Bangladesh that speaks Bangla, built on a Raspberry Pi 5.
 It reads Bangla and English text aloud, names objects in front of the user, recognises all nine Bangladeshi Taka
 notes with a cautious counterfeit check, and names the facial expression of the person in front. Everything
 except the optional online description runs on the device, without the internet.
@@ -62,13 +65,24 @@ Put the key in `savior_glass/.env` (never committed): `OPENAI_API_KEY=...` or `A
 
 30 minutes of mixed use: peak 77.1 °C, no thermal throttling, peak memory 1.48 GB.
 
-## Known limitations
+## Main results
 
-- With the 640×480 fixed-focus glass camera, currency recognition and Bangla reading are weaker than in the
-  laboratory; the cause is still being checked (`python scripts/diagnose_glass.py currency`).
-- Reading a full page is slow on the Pi.
-- The counterfeit check is cautious: on whole notes it usually asks for a check by hand.
-- A study with visually impaired users has started; results are not yet published.
+- Taka detector trained on 22,333 automatically labelled images: mAP@0.5 0.995 on held-out images, 91.5% correct
+  note value on 1,536 photographs taken by other people.
+- Counterfeit check trained on random prefixes of the views: 98.2% with one view (against 71.2% without).
+- On counterfeit prints never seen in training, the watermark check raises accuracy to 95.0%.
+- New watermark method, the denomination-matched watermark residual (DMWR): it removes the lamp from the back-lit
+  photo (quotient image Q = I / (G * I)), compares the watermark with a genuine portrait of the note value built
+  from genuine notes only, and classifies the residual R = Q - T. With 47,818 parameters (0.21 MB) it reaches
+  91.5% on unseen prints, statistically level with a 46 times larger MobileNetV2.
+- Text reading: character error rate 9.3% to 2.4% (Bangla 11.9% to 3.2%) on a benchmark with correctly shaped Bangla.
+- The glass never says "counterfeit": 0 of 88 test counterfeits were passed as genuine.
+
+## Current work
+
+- Tuning the glass camera for currency and Bangla reading (`python scripts/diagnose_glass.py currency`).
+- Faster reading of whole pages on the Pi.
+- Trial sessions with visually impaired users have started.
 
 ## Folders
 
