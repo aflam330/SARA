@@ -1,0 +1,39 @@
+# Taka detector, RoboEye and the novel authentication experiments.
+# Install into a fresh venv:  python -m venv venv ; .\venv\Scripts\pip.exe install -r requirements.txt
+# The default torch wheel from PyPI is CPU-only. For the NVIDIA GPU (RTX 3050, driver 617+),
+# install the CUDA build after the line above:
+#   .\venv\Scripts\pip.exe install --force-reinstall --no-deps torch==2.14.0 torchvision==0.29.0 --index-url https://download.pytorch.org/whl/cu126
+# The wheel's CUDA version (12.6) must not be newer than what the driver supports (nvidia-smi).
+#
+# The previous file (a pip freeze from a Python 3.13 machine, pinned to torch 2.6.0+cu124)
+# is kept in Unused/replaced_originals/realtime_bangla_taka_detection/requirements.txt.
+
+# Core
+torch>=2.1
+torchvision>=0.16
+ultralytics>=8.3
+onnx>=1.15
+onnxruntime>=1.17        # CPU. For ONNX on the GPU instead: pip uninstall onnxruntime; pip install "onnxruntime-gpu[cuda,cudnn]"
+                         #   and call onnxruntime.preload_dlls() before creating a CUDA session
+opencv-python>=4.8
+numpy>=1.24
+pillow>=10.0
+pyyaml>=6.0
+matplotlib>=3.7
+scipy>=1.10
+scikit-learn>=1.3
+pandas>=2.0
+psutil>=5.9
+
+# Speech and OCR used by the live demos
+pyttsx3>=2.90
+pywin32>=306; sys_platform == "win32"
+SpeechRecognition>=3.10
+easyocr>=1.7
+
+# Optional extras (VLM note description, CLIP prototypes, Grad-CAM overlay, PDF report, timm heads).
+# The roboeye modules fall back when these are missing; scripts/build_report.py needs reportlab.
+# transformers>=4.40
+# timm>=0.9
+# grad-cam>=1.5
+# reportlab>=4.0
