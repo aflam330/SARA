@@ -23,10 +23,9 @@ models/*.pt
 !models/ekush_cnn.pt
 # 82 MB RAF-DB emotion classifier (EfficientNetV2-S, 86.5 % on the RAF-DB test set); without it the Pi falls back to the weak FER+ model
 !models/emotion_faces.pt
-# Ultralytics COCO weights for the object mode (AGPL-3.0); tracked so the glass works without a download
-!models/yolov8n.pt
-!models/yolov8s.pt
 models/*.onnx
+!models/craft_fp32.onnx
+!models/craft_int8.onnx
 models/piper/*.onnx
 models/piper/*.json
 models/piper/engine/
@@ -57,5 +56,3 @@ desktop.ini
 !models/.gitkeep
 !models/piper/.gitkeep
 !logs/.gitkeep
-!models/craft_fp32.onnx
-!models/craft_int8.onnx
