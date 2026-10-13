@@ -57,3 +57,4 @@ desktop.ini
 !models/piper/.gitkeep
 !logs/.gitkeep
 results/uv_snapshots/
+!models/craft_int8_minmax128.onnx
