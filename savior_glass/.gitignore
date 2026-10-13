@@ -57,3 +57,5 @@ desktop.ini
 !models/.gitkeep
 !models/piper/.gitkeep
 !logs/.gitkeep
+!models/craft_fp32.onnx
+!models/craft_int8.onnx
