@@ -15,8 +15,9 @@ it is not open dictation. Commands are English words because no offline Bangla r
   "louder" / "volume up", "quieter" / "volume down"
   "stop" / "quiet"                             stops the voice
 
-The microphone is ignored while the glass itself is speaking, so it cannot command itself. With
-VOICE_WAKE_WORD=glass every command must start with that word ("glass read text"), for noisy places.
+The microphone is ignored while the glass itself is speaking, so it cannot command itself. Every command starts with
+the wake word "glass" ("glass, read text"); VOICE_WAKE_WORD= (empty) turns that off. Chosen on design voices and
+measured once on held-out voices: paper_evidence/VOICE_COMMANDS_FAST.md.
 
 Needs: pip install vosk; python scripts/get_speech_models.py; a microphone (USB or headset), read through
 sounddevice when it is installed and through ALSA's arecord otherwise.
@@ -56,10 +57,22 @@ _BY_PHRASE = {p: intent for intent, ps in PHRASES.items() for p in ps}
 _PREFIXES = {p for p in _BY_PHRASE for q in _BY_PHRASE if q != p and q.startswith(p + " ")}
 
 
-def parse(text: str, wake: str = "") -> str | None:
+def parse(text: str, wake: str = "", strip_edges: bool | None = None) -> str | None:
     """Intent for what the recogniser returned, or None. The whole utterance has to be one command phrase: a command
-    word inside other speech ("I will read it later") is not a command."""
+    word inside other speech ("I will read it later") is not a command.
+
+    strip_edges (wake-word mode only): unknown words before the wake word and after the command are dropped, because
+    with people talking nearby their speech is often glued to the edges of the user's command
+    ("[unk] glass read text [unk]"). Without a wake word this is never done: "[unk] stop [unk]" is too often a
+    sentence that merely contains "stop"."""
+    if strip_edges is None:
+        strip_edges = getattr(config, "VOICE_CMD_STRIP_EDGES", False)
     words = [w for w in (text or "").lower().split()]
+    if wake and strip_edges:
+        while words and words[0] == "[unk]":
+            words = words[1:]
+        while words and words[-1] == "[unk]":
+            words = words[:-1]
     if not words or "[unk]" in words:
         return None
     if wake:
@@ -101,7 +114,7 @@ class CommandRecognizer:
         self.vad = None
         if self.endpoint == "vad":
             from voice_frontend import VadEndpointer
-            self.vad = VadEndpointer()
+            self.vad = VadEndpointer(end_chunks=getattr(config, "VOICE_CMD_VAD_END_CHUNKS", 8))
         self.rate = rate
         self._model = _model()
         phrases = sorted(_BY_PHRASE)
@@ -159,7 +172,7 @@ class CommandRecognizer:
             return None
         self.last_heard = text
         intent = parse(text, self.wake)
-        confs = [w.get("conf", 0.0) for w in res.get("result", [])]
+        confs = [w.get("conf", 0.0) for w in res.get("result", []) if w.get("word") != "[unk]"]
         if intent and confs and min(confs) < self.min_conf:      # a mumbled or far-away word: better not to act
             logger.debug("voice: heard %r but not sure enough (%.2f)", text, min(confs))
             return None
