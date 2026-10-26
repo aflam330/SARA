@@ -75,6 +75,9 @@ Put the key in `savior_glass/.env` (never committed): `OPENAI_API_KEY=...` or `A
   photo (quotient image Q = I / (G * I)), compares the watermark with a genuine portrait of the note value built
   from genuine notes only, and classifies the residual R = Q - T. With 47,818 parameters (0.21 MB) it reaches
   91.5% on unseen prints, statistically level with a 46 times larger MobileNetV2.
+- UV fibre check (optional, off by default): the glass carries a small UV-A lamp (360-395 nm, the blue light on the
+  frame), which covers the 365 nm used for banknote inspection. Genuine 200, 500 and 1,000 Taka notes show glowing
+  security fibres on paper that stays dark; 103 of 111 genuine notes were accepted (92.8%) on phone photographs.
 - Text reading: character error rate 9.3% to 2.4% (Bangla 11.9% to 3.2%) on a benchmark with correctly shaped Bangla.
 - The glass never says "counterfeit": 0 of 88 test counterfeits were passed as genuine.
 
