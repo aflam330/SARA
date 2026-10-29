@@ -15,6 +15,19 @@ python demo_video/run_ocr_demo.py demo_video/input/page_vertical_farming.jpg
 cd .. && git add savior_glass/demo_video/results && git commit -m "OCR demo result from the Pi" && git push
 ```
 
+## Making the video (on the laptop)
+
+```
+python demo_video/make_video.py demo_video/results/ocr_demo_pi5_<time>.json --glass-dir <savior_glass with models/piper> --ffmpeg <ffmpeg>
+```
+
+The video shows only what the result file holds:
+- **Text:** the text the OCR mode produced.
+- **Timing:** each line appears at the moment the Pi produced it.
+- **Voice:** the glass's own speech engine and Piper voices.
+
+The wait before the first line is shown as a labelled time-lapse.
+
 ## What the result shows
 
 The photo is read twice:
