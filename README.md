@@ -55,15 +55,19 @@ Put the key in `savior_glass/.env` (never committed): `OPENAI_API_KEY=...` or `A
 
 ## Measured on the Raspberry Pi 5 (8 GB)
 
+29 October 2026, board not throttled (peak 79.3 °C). Full report with graphs: [benchmark_report/REPORT.md](benchmark_report/REPORT.md).
+
 | | Median |
 |---|---|
-| Currency check, end to end | 327 ms |
-| Taka detector (INT8 ONNX) | 254 ms |
-| Watermark check | 50 ms |
-| Object scan (YOLOv8n) | 207 ms |
-| Text reading (one capture) | 18.7 s |
+| Currency check, end to end | 441 ms |
+| Taka detector (INT8 ONNX) | 261 ms |
+| Watermark check | 57 ms |
+| Object scan (YOLOv8s, as the app runs it) | 756 ms |
+| Emotion, face in view | 675 ms |
+| Text reading, 3-line sign (one capture) | 6.4 s |
+| Text reading, 12-line page: first line spoken / whole page | 4.2 s / 15.6 s |
 
-30 minutes of mixed use: peak 77.1 °C, no thermal throttling, peak memory 1.48 GB.
+30 minutes of mixed use (1 October 2026, not repeated since): peak 77.1 °C, no thermal throttling, peak memory 1.48 GB.
 
 ## Main results
 
