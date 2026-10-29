@@ -7,7 +7,7 @@ Run on 29 October 2026, starting 17:02 local time, on the glass's own board (Ras
 | What | Median | 95th percentile |
 |---|---:|---:|
 | Currency check, end to end | 441 ms | 623 ms |
-| Taka detector, ONNX INT8 (used on the Pi) | 261 ms | 290 ms |
+| Taka detector (earlier model), ONNX INT8 | 261 ms | 290 ms |
 | Watermark check, learned localizer (used) | 56.7 ms | 103 ms |
 | Counterfeit safe-check, one crop | 40.2 ms | 50.9 ms |
 | Object scan, as the app runs it (YOLOv8s) | 756 ms | 1,149 ms |
@@ -48,9 +48,9 @@ Each row is 30 timed calls after 3 warm-up calls, from `scripts/benchmark_pi5.py
 | Group | Benchmark | Median | 95th pct | Mean | Calls/s | Load | Memory after | Temp after |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | Currency | Currency check, end to end | 441 ms | 623 ms | 464 ms | 2.27 | 534 ms | 1.39 GB | 59.0 °C |
-| Currency | Taka detector, ONNX INT8 (used on the Pi) | 261 ms | 290 ms | 263 ms | 3.84 | 0.4 ms | 1.65 GB | 67.8 °C |
-| Currency | Taka detector, ONNX FP32 | 488 ms | 543 ms | 498 ms | 2.05 | 0.6 ms | 1.57 GB | 67.8 °C |
-| Currency | Taka detector, PyTorch | 556 ms | 1,454 ms | 685 ms | 1.80 | 555 ms | 1.43 GB | 61.7 °C |
+| Currency | Taka detector (earlier model), ONNX INT8 | 261 ms | 290 ms | 263 ms | 3.84 | 0.4 ms | 1.65 GB | 67.8 °C |
+| Currency | Taka detector (earlier model), ONNX FP32 | 488 ms | 543 ms | 498 ms | 2.05 | 0.6 ms | 1.57 GB | 67.8 °C |
+| Currency | Taka detector (earlier model), PyTorch | 556 ms | 1,454 ms | 685 ms | 1.80 | 555 ms | 1.43 GB | 61.7 °C |
 | Watermark | Watermark check, learned localizer (used) | 56.7 ms | 103 ms | 61.8 ms | 17.64 | 581 ms | 1.66 GB | 64.5 °C |
 | Watermark | Watermark check, SIFT alignment | 330 ms | 341 ms | 330 ms | 3.03 | 607 ms | 1.64 GB | 60.6 °C |
 | Counterfeit check | Counterfeit safe-check, one crop | 40.2 ms | 50.9 ms | 40.0 ms | 24.89 | 204 ms | 1.64 GB | 61.7 °C |
@@ -73,6 +73,7 @@ Load is the time to build the model object in that process. The ONNX detectors a
 - **Emotion.** The project script has no face pictures on the Pi (RAF-DB is absent), so it times a black frame: 47.6 ms is the face search finding nothing. With a face in view (the astronaut test picture, face found, classifier `rgb_mobilenet_blend`) one answer takes 675 ms, which is 14 times longer.
 - **Objects.** The app now loads YOLOv8s (756 ms per scan). YOLOv8n on the same frames takes 226 ms; the README's 207 ms object figure was YOLOv8n. COCO pictures are not on the Pi, so the scan was timed on the note photos; the detector does the same amount of work on any picture.
 - **Currency.** Only two note photos are on the Pi (the 500 and 1,000 Taka templates), so every currency, watermark and counterfeit-check row cycles through those two.
+- **Taka detector.** The app's currency check loads `best_handheld_int8.onnx`; `benchmark_pi5.py` times only the earlier detector on its own (`best_int8.onnx`, `best.onnx`, `best.pt`), so the detector the app uses is timed only inside the end-to-end currency row.
 
 ![Counterfeit check: cost of each extra view](graphs/06_authenticator_views.png)
 
@@ -83,9 +84,9 @@ Load is the time to build the model object in that process. The ONNX detectors a
 | Benchmark | 1 Oct | 13 Oct | This run | Change from 1 Oct | Change from 13 Oct |
 |---|---:|---:|---:|---:|---:|
 | Currency check, end to end | 327 ms | 399 ms | 441 ms | +35% | +11% |
-| Taka detector, ONNX INT8 (used on the Pi) | 254 ms | 306 ms | 261 ms | +2% | -15% |
-| Taka detector, ONNX FP32 | 485 ms | 583 ms | 488 ms | +0% | -16% |
-| Taka detector, PyTorch | 507 ms | 534 ms | 556 ms | +10% | +4% |
+| Taka detector (earlier model), ONNX INT8 | 254 ms | 306 ms | 261 ms | +2% | -15% |
+| Taka detector (earlier model), ONNX FP32 | 485 ms | 583 ms | 488 ms | +0% | -16% |
+| Taka detector (earlier model), PyTorch | 507 ms | 534 ms | 556 ms | +10% | +4% |
 | Watermark check, learned localizer (used) | 50.1 ms | 64.0 ms | 56.7 ms | +13% | -11% |
 | Watermark check, SIFT alignment | 372 ms | 343 ms | 330 ms | -11% | -4% |
 | Counterfeit safe-check, one crop | 36.1 ms | 47.3 ms | 40.2 ms | +11% | -15% |
@@ -221,7 +222,7 @@ A speed test cannot measure accuracy: that needs labelled test pictures, and tho
 
 ![Counterfeit check: what each extra view buys and costs](graphs/09_counterfeit_views_tradeoff.png)
 
-- The best result is with 5 views (98.6%, against 97.1% with one). On the Pi that costs 86.4 ms instead of 40.8 ms per check, against 261 ms for one pass of the note detector. The larger cost is the time the user takes to show the note several times.
+- The best result is with 5 views (98.6%, against 97.1% with one). On the Pi that costs 86.4 ms instead of 40.8 ms per check, against 441 ms for the whole currency check. The larger cost is the time the user takes to show the note several times.
 - On 208 notes one note is 0.5 points, so the differences between 1 and 6 views come down to a few notes.
 - The README gives 98.2% for one view; these files give 97.1%. The 98.2% comes from an evaluation that is not in `realtime_bangla_taka_detection/results/qduig/prefix_ft/seed42/test_views_20260928`.
 

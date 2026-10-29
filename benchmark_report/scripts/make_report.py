@@ -12,6 +12,7 @@ import json
 import re
 import statistics
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -49,9 +50,9 @@ plt.rcParams.update({
 
 NAMES = {
     "currency_mode_full": "Currency check, end to end",
-    "taka_yolo_onnx_int8": "Taka detector, ONNX INT8 (used on the Pi)",
-    "taka_yolo_onnx_fp32": "Taka detector, ONNX FP32",
-    "taka_yolo_pt": "Taka detector, PyTorch",
+    "taka_yolo_onnx_int8": "Taka detector (earlier model), ONNX INT8",
+    "taka_yolo_onnx_fp32": "Taka detector (earlier model), ONNX FP32",
+    "taka_yolo_pt": "Taka detector (earlier model), PyTorch",
     "watermark_int8_localizer": "Watermark check, learned localizer (used)",
     "watermark_int8_sift": "Watermark check, SIFT alignment",
     "jaal_check_qduig": "Counterfeit safe-check, one crop",
@@ -825,6 +826,16 @@ def main() -> None:
                      "amount of work on any picture.")
     notes.append("**Currency.** Only two note photos are on the Pi (the 500 and 1,000 Taka templates), so every currency, "
                  "watermark and counterfeit-check row cycles through those two.")
+    try:
+        sys.path.insert(0, str(GLASS))
+        import config
+        app_det = Path(config.CURRENCY_YOLO_PATH).name
+    except Exception:  # noqa: BLE001
+        app_det = None
+    if app_det and app_det not in ("best_int8.onnx", "best.onnx", "best.pt"):
+        notes.append(f"**Taka detector.** The app's currency check loads `{app_det}`; `benchmark_pi5.py` times only the earlier "
+                     "detector on its own (`best_int8.onnx`, `best.onnx`, `best.pt`), so the detector the app uses is timed "
+                     "only inside the end-to-end currency row.")
     for n in notes:
         w(f"- {n}")
     w("")
@@ -1123,13 +1134,13 @@ def main() -> None:
         if g["auth_tradeoff"]:
             w(f"![Counterfeit check: what each extra view buys and costs]({g['auth_tradeoff']})")
             w("")
-        t1, tb, det = lat.get(f"prmvt_{k1}view"), lat.get(f"prmvt_{best}view"), lat.get("taka_yolo_onnx_int8")
+        t1, tb, det = lat.get(f"prmvt_{k1}view"), lat.get(f"prmvt_{best}view"), lat.get("currency_mode_full")
         if t1 and tb and best != k1:
             line = (f"- The best result is with {best} views ({auth[best]['accuracy'] * 100:.1f}%, against "
                     f"{auth[k1]['accuracy'] * 100:.1f}% with one). On the Pi that costs {ms(tb['median_ms'])} instead of "
                     f"{ms(t1['median_ms'])} per check")
             if det:
-                line += f", against {ms(det['median_ms'])} for one pass of the note detector"
+                line += f", against {ms(det['median_ms'])} for the whole currency check"
             w(line + ". The larger cost is the time the user takes to show the note several times.")
         w(f"- On {auth[k1]['n']} notes one note is {100 / auth[k1]['n']:.1f} points, so the differences between {k1} and {k6} views "
           "come down to a few notes.")

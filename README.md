@@ -60,7 +60,7 @@ Put the key in `savior_glass/.env` (never committed): `OPENAI_API_KEY=...` or `A
 | | Median |
 |---|---|
 | Currency check, end to end | 441 ms |
-| Taka detector (INT8 ONNX) | 261 ms |
+| Taka detector, earlier model (INT8 ONNX; the app's hand-held model is timed inside the currency check) | 261 ms |
 | Watermark check | 57 ms |
 | Object scan (YOLOv8s, as the app runs it) | 756 ms |
 | Emotion, face in view | 675 ms |
