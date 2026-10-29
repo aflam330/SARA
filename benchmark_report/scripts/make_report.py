@@ -542,18 +542,22 @@ def graph_sustained(calls: list[dict], power: list[dict]) -> str | None:
 
 # ---------------------------------------------------------------- field logs of the same day
 def field_sessions(day: str) -> list[dict]:
-    out = []
-    for folder in sorted((GLASS / "logs" / "field").glob(f"{day}_*")):
+    """The app's own field logs of that day: raw/field/ (copied there to be kept) and savior_glass/logs/field/ (git-ignored)."""
+    out, seen = [], set()
+    for folder in sorted([*(RAW / "field").glob(f"{day}_*"), *(GLASS / "logs" / "field").glob(f"{day}_*")], key=lambda p: p.name):
         ev, sy = folder / "events.csv", folder / "system.csv"
-        if not ev.is_file():
+        if folder.name in seen or not ev.is_file():
             continue
+        seen.add(folder.name)
         with ev.open(encoding="utf-8-sig", newline="") as fh:
-            events = [r for r in csv.DictReader(fh) if r.get("latency_ms")]
+            rows = list(csv.DictReader(fh))
         system = []
         if sy.is_file():
             with sy.open(encoding="utf-8-sig", newline="") as fh:
                 system = list(csv.DictReader(fh))
-        out.append({"name": folder.name, "events": events, "system": system})
+        settings = (load(folder / "session.json") or {}).get("settings", {})
+        out.append({"name": folder.name, "start": datetime.strptime(folder.name[:15], "%Y%m%d_%H%M%S"),
+                    "events": [r for r in rows if r.get("latency_ms")], "rows": rows, "system": system, "settings": settings})
     return out
 
 
@@ -984,9 +988,15 @@ def main() -> None:
     if sessions:
         w("## What the app itself logged that day")
         w("")
-        w(f"The glass was run {len(sessions)} time{'' if len(sessions) == 1 else 's'} that day before this benchmark "
-          f"({', '.join('`' + s['name'] + '`' for s in sessions)}). "
-          "These are the latencies its own field log recorded with the real camera.")
+        bench_start = started.replace(tzinfo=None)
+        sides = []
+        for side in ("before", "after"):
+            names = [f"`{s['name']}`" for s in sessions if (s["start"] < bench_start) == (side == "before")]
+            if names:
+                sides.append(f"{' and '.join(names)}, {'both ' if len(names) == 2 else ''}{side} this benchmark")
+        w(f"The glass app was used {len(sessions)} time{'' if len(sessions) == 1 else 's'} that day ({'; '.join(sides)}; logs "
+          "in `raw/field/`). These are the latencies its own field log recorded with the real camera, from the button press "
+          "to the spoken answer.")
         w("")
         w("| What | Times | Median | Range |")
         w("|---|---:|---:|---:|")
@@ -1006,10 +1016,12 @@ def main() -> None:
         bits = []
         if ocr_real:
             line = (f"The app's one real text capture took {sec(ocr_real[0])}" if len(ocr_real) == 1 else
-                    f"The app's {len(ocr_real)} real text captures took a median of {sec(statistics.median(ocr_real))}")
-            if short:
-                line += (f", close to the {min(r['total_ms_median'] for r in short) / 1000:.0f} to "
-                         f"{max(r['total_ms_median'] for r in short) / 1000:.0f} s measured above for short captures as the app runs them")
+                    f"The app's {len(ocr_real)} real text captures took a median of {sec(statistics.median(ocr_real))} "
+                    f"({sec(min(ocr_real))} to {sec(max(ocr_real))})")
+            if page:
+                line += (f". Reading time grows with the amount of text: on the rendered 12-line page above, reading the "
+                         f"letters alone took {sec(page['recognize_ms_median'])}. The field log does not record how many lines "
+                         "each capture had, so the slowest captures cannot be explained from it")
             bits.append(line + ".")
         if rss:
             bits.append(f"The running app reached {max(rss) / 1000:.2f} GB of memory (all modes loaded, camera and preview "
@@ -1018,6 +1030,46 @@ def main() -> None:
             bits.append(f"The app logged up to {max(temps):.1f} °C.")
         w(" ".join(bits))
         w("")
+        cur = [r for s in sessions for r in s["rows"] if r["mode"] == "currency" and r["event"] == "result"]
+        if cur:
+            said = {}
+            for r in cur:
+                said.setdefault(r["result"], []).append(r)
+            w("What the glass said after each currency press:")
+            w("")
+            w("| Spoken answer | Times | Detector's guess (confidence) |")
+            w("|---|---:|---|")
+            for text, rs in sorted(said.items(), key=lambda kv: -len(kv[1])):
+                guesses = ", ".join(f"{r['denomination'] or 'none'}" + (f" {float(r['confidence']) * 100:.0f}%" if r["confidence"] else "")
+                                    for r in rs)
+                w(f"| {text} | {len(rs)} | {guesses} |")
+            w("")
+            thr = next((s["settings"].get("CURRENCY_ANNOUNCE_CONF") for s in sessions if s["settings"].get("CURRENCY_ANNOUNCE_CONF")), None)
+            confs = [(float(r["confidence"]), r["result"]) for r in cur if r["confidence"]]
+            above = {t for c, t in confs if thr and c >= thr}
+            below = {t for c, t in confs if thr and c < thr}
+            if thr and confs and not (above & below):
+                w(f"`CURRENCY_ANNOUNCE_CONF` was {thr} in these sessions. The {sum(c >= thr for c, _ in confs)} checks at or above "
+                  f"it named the note; the {sum(c < thr for c, _ in confs)} below it did not.")
+                w("")
+        wm = [r for s in sessions for r in s["rows"] if r["mode"] == "currency" and r["event"] == "watermark_check"]
+        if wm:
+            outcome, frames, rejected = {}, 0, {}
+            for r in wm:
+                outcome[r["result"]] = outcome.get(r["result"], 0) + 1
+                try:
+                    d = json.loads(r["detail"])
+                except (TypeError, ValueError):
+                    d = {}
+                frames += d.get("frames", 0)
+                for k, v in (d.get("rejected") or {}).items():
+                    rejected[k] = rejected.get(k, 0) + v
+            w(f"Guided watermark checks: {len(wm)}, ending with "
+              + ", ".join(f"`{k}` {v} time{'' if v == 1 else 's'}" for k, v in outcome.items())
+              + f", after a median of {sec(statistics.median(float(r['latency_ms']) for r in wm))}. They looked at {frames} frames "
+              "and rejected " + ", ".join(f"{v} as {k.replace('_', ' ')}" for k, v in sorted(rejected.items(), key=lambda kv: -kv[1]))
+              + (". No back-lit reading was made, so the glass never reached \"likely genuine\"." if set(outcome) == {"timeout"} else "."))
+            w("")
 
     # ---- loading, speech, camera
     w("## Loading, speech and camera")

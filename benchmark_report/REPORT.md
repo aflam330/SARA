@@ -178,6 +178,31 @@ What was read (app path, last run of each capture):
 
 These are clean rendered pictures, not camera photos, so the error rates say only that the timed captures were real reads. The pictures are saved in `raw/ocr_input_*.png`.
 
+## What the app itself logged that day
+
+The glass app was used 2 times that day (`20261029_172213_memo` and `20261029_184909_memo`, both after this benchmark; logs in `raw/field/`). These are the latencies its own field log recorded with the real camera, from the button press to the spoken answer.
+
+| What | Times | Median | Range |
+|---|---:|---:|---:|
+| Text reading: one capture | 8 | 15.61 s | 13.44 s – 86.34 s |
+| Object scan and announcement | 8 | 811 ms | 757 ms – 953 ms |
+| Currency check | 10 | 654 ms | 499 ms – 749 ms |
+| Watermark check (guided, several frames) | 6 | 10.26 s | 10.01 s – 10.70 s |
+
+The app's 8 real text captures took a median of 15.61 s (13.44 s to 86.34 s). Reading time grows with the amount of text: on the rendered 12-line page above, reading the letters alone took 12.66 s. The field log does not record how many lines each capture had, so the slowest captures cannot be explained from it. The running app reached 2.97 GB of memory (all modes loaded, camera and preview window open). The app logged up to 78.2 °C.
+
+What the glass said after each currency press:
+
+| Spoken answer | Times | Detector's guess (confidence) |
+|---|---:|---|
+| নোট নিশ্চিত করা যায়নি। আরও কাছে ধরুন। | 7 | 1000_taka 48%, 1000_taka 63%, 10_taka 58%, 1000_taka 79%, 1000_taka 51%, 10_taka 41%, 200_taka 75% |
+| এক হাজার টাকার নোট। আসল কিনা হাতে যাচাই করুন | 2 | 1000_taka 83%, 1000_taka 84% |
+| নোট সনাক্ত করা যায়নি। ক্যামেরার সামনে ধরুন। | 1 | none |
+
+`CURRENCY_ANNOUNCE_CONF` was 0.8 in these sessions. The 2 checks at or above it named the note; the 7 below it did not.
+
+Guided watermark checks: 6, ending with `timeout` 6 times, after a median of 10.26 s. They looked at 111 frames and rejected 65 as blurry, 46 as no note. No back-lit reading was made, so the glass never reached "likely genuine".
+
 ## Loading, speech and camera
 
 ![Loading the models](graphs/07_model_load_times.png)
